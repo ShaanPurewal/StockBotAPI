@@ -6,27 +6,87 @@ namespace API.Controllers
 {
     [ApiController]
     [Route("/")]
-    public class BotController(ILogger<BotController> logger, AuthentificationService authService) : ControllerBase
+    public class BotController(ILogger<BotController> logger, AuthentificationService authService, BotService botService) : ControllerBase
     {
 
         private readonly ILogger<BotController> _logger = logger;
-        private AuthentificationService _authService = authService;
+        private readonly AuthentificationService _authService = authService;
+        private BotService _botService = botService;
 
         [HttpGet(Name = "GetRoot")]
         public IActionResult GetRoot()
         {
             _logger.LogInformation("Request to root");
-            return Ok(new Response { result = "Welcome to the Stock Bot API. Please Navigate to the /swagger/index.html endpoint for supported calls.", status = Status.Successful });
+            return Ok(new Response { Result = "Welcome to the Stock Bot API. Please Navigate to the /swagger/index.html endpoint for supported calls.", Status = Status.Successful });
         }
 
         [HttpGet("validateKey", Name = "GetAuthCheck")]
         public IActionResult GetAuthCheck(string key)
         {
-            _logger.LogInformation($"The key '{key}' was authenicated");
+            _logger.LogInformation($"Validating key...");
+            Response authResponse = _authService.AuthenticateKey(key, ref _botService);
 
-            if(_authService.AuthenticateKey(key)) return Ok(new Response { result = "Valid Key", status = Status.Successful });
+            if (authResponse.Status == Status.Failed) { _logger.LogInformation($"Key is invalid"); return Unauthorized(authResponse); }
 
-            return Unauthorized(new Response { result = "Invalid Key", status = Status.Failed });
+            _logger.LogInformation($"Key is valid");
+            return Ok(authResponse);
+        }
+
+        [HttpPost("register", Name = "RegisterBot")]
+        public IActionResult RegisterBot(string adminKey, string name)
+        {
+            _logger.LogInformation($"Authenticating admin key...");
+            Response authResponse = _authService.AdminAuthenticateKey(adminKey, ref _botService);
+
+            if (authResponse.Status == Status.Failed) { _logger.LogInformation($"Admin key is invalid"); return Unauthorized(authResponse); }
+            _logger.LogInformation($"Admin key is valid");
+
+            _logger.LogInformation($"Registering new bot '{name}'...");
+
+            _logger.LogInformation($"Generating a new auth key...");
+            string newKey = _authService.GenerateKey();
+
+            _logger.LogInformation($"Hashing key...");
+            string hashedKey = _authService.HashKey(newKey);
+
+            Bot newBot = new() { Name = name, AuthenticationKey = hashedKey };
+
+            _logger.LogInformation($"Storing bot information...");
+            Response createBotResponse = _botService.CreateBot(newBot);
+
+            if (createBotResponse.Status == Status.Error) { _logger.LogInformation($"Error thrown when creating Bot"); return StatusCode(500, createBotResponse); }
+            if (createBotResponse.Status == Status.Failed) { _logger.LogInformation($"Failed to create bot"); return BadRequest(createBotResponse); }
+
+            _logger.LogInformation($"Successfully registered bot '{name}'");
+            createBotResponse.Result = newKey;
+            return Ok(createBotResponse);
+        }
+
+        [HttpDelete("delete", Name = "DeleteBot")]
+        public IActionResult DeleteBot(string adminKey, string targetKey)
+        {
+            _logger.LogInformation($"Authenticating admin key...");
+            Response authResponse = _authService.AdminAuthenticateKey(adminKey, ref _botService);
+
+            if (authResponse.Status == Status.Failed) { _logger.LogInformation($"Admin key is invalid"); return Unauthorized(authResponse); }
+            _logger.LogInformation($"Admin key is valid");
+
+            _logger.LogInformation($"Authenticating target key...");
+            Response authTargetResponse = _authService.AuthenticateKey(targetKey, ref _botService);
+
+            if (authTargetResponse.Status == Status.Failed) { _logger.LogInformation($"Target key is invalid"); return Unauthorized(authTargetResponse); }
+            _logger.LogInformation($"Target key is valid");
+
+            _logger.LogInformation($"Searching for bot...");
+            Bot foundBot = _botService.FindBot(_authService.HashKey(targetKey));
+
+            _logger.LogInformation($"Deleting bot '{foundBot.Name}'...");
+            Response deleteBotResponse = _botService.DeleteBot(foundBot);
+
+            if (deleteBotResponse.Status == Status.Failed) { _logger.LogInformation($"Failed to deleted bot '{foundBot.Name}'"); return BadRequest(deleteBotResponse); }
+
+            _logger.LogInformation($"Successfully deleted bot '{foundBot.Name}'");
+            return Ok(deleteBotResponse);
         }
     }
 }

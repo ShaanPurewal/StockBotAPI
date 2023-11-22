@@ -12,6 +12,9 @@ builder.Services.AddSwaggerGen();
 // Register your AuthentificationService
 builder.Services.AddScoped<AuthentificationService>();
 
+// Register your BotService
+builder.Services.AddScoped<BotService>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

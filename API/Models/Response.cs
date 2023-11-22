@@ -3,13 +3,15 @@
     public enum Status
     {
         Successful,
-        Failed
+        Failed,
+        Error
     }
 
     public class Response
     {
-        public DateOnly timeStamp = System.DateOnly.FromDateTime(DateTime.Now);
-        public required Status status { get; set; } = Status.Failed;
-        public required Object result { get; set; } = "Object not set";
+        public DateTime TimeStamp { get; set; } = DateTime.Now;
+        public required Status Status { get; set; } = Status.Failed;
+        public required Object Result { get; set; } = "Result not set";
+        public string Message { get; set; } = "Message not set";
     }
 }
