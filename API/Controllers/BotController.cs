@@ -6,11 +6,12 @@ namespace API.Controllers
 {
     [ApiController]
     [Route("/")]
-    public class BotController(ILogger<BotController> logger, AuthentificationService authService, BotService botService) : ControllerBase
+    public class BotController(ILogger<BotController> logger, AuthentificationService authService, BotService botService, StockService stockService) : ControllerBase
     {
 
         private readonly ILogger<BotController> _logger = logger;
         private readonly AuthentificationService _authService = authService;
+        private readonly StockService _stockService = stockService;
         private BotService _botService = botService;
 
         [HttpGet(Name = "GetRoot")]
@@ -87,6 +88,39 @@ namespace API.Controllers
 
             _logger.LogInformation($"Successfully deleted bot '{foundBot.Name}'");
             return Ok(deleteBotResponse);
+        }
+
+        [HttpGet("bot", Name = "GetBot")]
+        public IActionResult GetBot(string key)
+        {
+            string hashed_key = _authService.HashKey(key);
+            if (!_botService.KeyExists(hashed_key)) return Unauthorized(new Response { Result = "Could not find bot/Invalid key", Status = Status.Failed });
+
+            return Ok(new Response { Result = _botService.FindBot(hashed_key), Status = Status.Successful });
+        }
+
+        [HttpPost("trade", Name = "ProcessTrade")]
+        public IActionResult ProcessTrade(string key, string TKR)
+        {
+            string hashed_key = _authService.HashKey(key);
+            if (!_botService.KeyExists(hashed_key)) return Unauthorized(new Response { Result = "Could not find bot/Invalid key", Status = Status.Failed });
+
+            Response priceResponse = _stockService.GetPrice(TKR);
+            if (priceResponse.Status == Status.Failed) { return BadRequest(priceResponse); }
+
+            Response botResponse = _botService.UpdatePrice(hashed_key, (double)priceResponse.Result);
+
+            if (botResponse.Status == Status.Failed) return BadRequest(botResponse);
+            return Ok(botResponse);
+        }
+
+        [HttpGet("price", Name = "GetPrice")]
+        public IActionResult GetPrice(string TKR)
+        {
+            Response priceResponse = _stockService.GetPrice(TKR);
+            if (priceResponse.Status == Status.Failed) { return BadRequest(priceResponse); }
+
+            return Ok(priceResponse);
         }
     }
 }
