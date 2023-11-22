@@ -12,6 +12,9 @@ builder.Services.AddSwaggerGen();
 // Register your AuthentificationService
 builder.Services.AddScoped<AuthentificationService>();
 
+// Register your StockService
+builder.Services.AddScoped<StockService>();
+
 // Register your BotService
 builder.Services.AddScoped<BotService>();
 
