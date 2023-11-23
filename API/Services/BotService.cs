@@ -91,7 +91,22 @@ namespace API.Services
 
             foundBot.Balance += price;
             UpdateBot(foundBot);
-            return new Response { Result = foundBot.Balance, Status = Status.Failed, Message = $"Successfully updated balance, New Balance:{foundBot.Balance}" };
+            return new Response { Result = foundBot.Balance, Status = Status.Successful, Message = $"Successfully updated balance, New Balance:{foundBot.Balance}" };
+        }
+
+        public Response UpdatePortfolio(string key, string TKR, int quantity)
+        {
+            Bot foundBot = FindBot(key);
+
+            foundBot.Portfolio.TryGetValue(TKR, out double inventory);
+
+            if (inventory < -quantity) return new Response { Result = $"Insuffecient stock in current holdings, inventory:{inventory} request:{quantity}", Status = Status.Failed };
+
+            foundBot.Portfolio[TKR] = inventory + quantity;
+            if (foundBot.Portfolio[TKR] == 0) foundBot.Portfolio.Remove(TKR);
+            UpdateBot(foundBot);
+
+            return new Response { Result = inventory + quantity, Status = Status.Successful, Message = $"Successfully updated portfolio, '{TKR}': {inventory + quantity}" };
         }
 
         public Bot FindBot(string key) { return _bots[key]; }

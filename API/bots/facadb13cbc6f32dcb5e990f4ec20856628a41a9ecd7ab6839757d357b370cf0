@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<Bot xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
-  <Created>2023-11-20T22:37:40.3639263-05:00</Created>
-  <Balance>100</Balance>
-  <Name>god</Name>
-  <AuthenticationKey>facadb13cbc6f32dcb5e990f4ec20856628a41a9ecd7ab6839757d357b370cf0</AuthenticationKey>
-  <isAdmin>true</isAdmin>
-</Bot>

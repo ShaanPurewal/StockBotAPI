@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Bot xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Created>2023-11-22T23:28:41.9312899-05:00</Created>
+  <Balance>103350.4</Balance>
+  <Name>god</Name>
+  <AuthenticationKey>0f1491c148eebef3120c5610fee57f96bd9cd220d20c68e372c181e8b2abcfaa</AuthenticationKey>
+  <Portfolio>
+    <item>
+      <key>
+        <string>ibm</string>
+      </key>
+      <value>
+        <double>8</double>
+      </value>
+    </item>
+  </Portfolio>
+  <isAdmin>true</isAdmin>
+</Bot>

@@ -99,25 +99,65 @@ namespace API.Controllers
             return Ok(new Response { Result = _botService.FindBot(hashed_key), Status = Status.Successful });
         }
 
-        [HttpPost("trade", Name = "ProcessTrade")]
-        public IActionResult ProcessTrade(string key, string TKR)
+        [HttpPost("buy", Name = "ProcessBuy")]
+        public IActionResult ProcessBuy(string key, string TKR, int quantity)
         {
+            if (quantity <= 0) { return BadRequest(new Response { Result = "Invalid quantity", Status = Status.Failed }); }
+
             string hashed_key = _authService.HashKey(key);
-            if (!_botService.KeyExists(hashed_key)) return Unauthorized(new Response { Result = "Could not find bot/Invalid key", Status = Status.Failed });
+            _logger.LogInformation($"Authenticating key...");
+            if (!_botService.KeyExists(hashed_key)) { _logger.LogInformation($"Key is not valid"); return Unauthorized(new Response { Result = "Could not find bot/Invalid key", Status = Status.Failed }); }
+            _logger.LogInformation($"Key is valid");
 
-            Response priceResponse = _stockService.GetPrice(TKR);
-            if (priceResponse.Status == Status.Failed) { return BadRequest(priceResponse); }
+            _logger.LogInformation($"Fetching price...");
+            Response priceResponse = _stockService.GetPriceAsync(TKR).Result;
+            if (priceResponse.Status == Status.Failed) { _logger.LogInformation($"Failed to fetch price"); return BadRequest(priceResponse); }
+            _logger.LogInformation($"Successfuly fetched price");
 
-            Response botResponse = _botService.UpdatePrice(hashed_key, (double)priceResponse.Result);
+            _logger.LogInformation($"Updating portfolio...");
+            _botService.UpdatePortfolio(hashed_key, TKR, quantity);
+            _logger.LogInformation($"Successfuly updated portfolio");
 
-            if (botResponse.Status == Status.Failed) return BadRequest(botResponse);
+            _logger.LogInformation($"Updating balance...");
+            Response botResponse = _botService.UpdatePrice(hashed_key, -(double)priceResponse.Result * quantity);
+
+            if (botResponse.Status == Status.Failed) { _logger.LogInformation($"Failed to update balance"); return BadRequest(botResponse); }
+            _logger.LogInformation($"Successfuly updated balance");
+            return Ok(botResponse);
+        }
+
+        [HttpPost("sell", Name = "ProcessSell")]
+        public IActionResult ProcessSell(string key, string TKR, int quantity)
+        {
+            if (quantity <= 0) { return BadRequest(new Response { Result = "Invalid quantity", Status = Status.Failed }); }
+
+            string hashed_key = _authService.HashKey(key);
+            _logger.LogInformation($"Authenticating key...");
+            if (!_botService.KeyExists(hashed_key)) { _logger.LogInformation($"Key is not valid"); return Unauthorized(new Response { Result = "Could not find bot/Invalid key", Status = Status.Failed }); }
+            _logger.LogInformation($"Key is valid");
+
+            _logger.LogInformation($"Fetching price...");
+            Response priceResponse = _stockService.GetPriceAsync(TKR).Result;
+            if (priceResponse.Status == Status.Failed) { _logger.LogInformation($"Failed to fetch price"); return BadRequest(priceResponse); }
+            _logger.LogInformation($"Successfuly fetched price");
+
+            _logger.LogInformation($"Updating portfolio...");
+            Response portfolioResponse = _botService.UpdatePortfolio(hashed_key, TKR, -quantity);
+            if (portfolioResponse.Status == Status.Failed) { _logger.LogInformation($"Failed to update portfolio"); return BadRequest(portfolioResponse); }
+            _logger.LogInformation($"Successfuly updated portfolio");
+
+            _logger.LogInformation($"Updating balance...");
+            Response botResponse = _botService.UpdatePrice(hashed_key, (double)priceResponse.Result * quantity);
+
+            if (botResponse.Status == Status.Failed) { _logger.LogInformation($"Failed to update balance"); return BadRequest(botResponse); }
+            _logger.LogInformation($"Successfuly updated balance");
             return Ok(botResponse);
         }
 
         [HttpGet("price", Name = "GetPrice")]
         public IActionResult GetPrice(string TKR)
         {
-            Response priceResponse = _stockService.GetPrice(TKR);
+            Response priceResponse = _stockService.GetPriceAsync(TKR).Result;
             if (priceResponse.Status == Status.Failed) { return BadRequest(priceResponse); }
 
             return Ok(priceResponse);
