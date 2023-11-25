@@ -11,7 +11,7 @@ namespace API.Controllers
 
         private readonly ILogger<BotController> _logger = logger;
         private readonly AuthentificationService _authService = authService;
-        private readonly StockService _stockService = stockService;
+        private StockService _stockService = stockService;
         private BotService _botService = botService;
 
         [HttpGet(Name = "GetRoot")]
@@ -110,13 +110,18 @@ namespace API.Controllers
             _logger.LogInformation($"Key is valid");
 
             _logger.LogInformation($"Fetching price...");
-            Response priceResponse = _stockService.GetPriceAsync(TKR).Result;
+            Response priceResponse = _stockService.GetStockPrice(hashed_key, TKR).Result;
             if (priceResponse.Status == Status.Failed) { _logger.LogInformation($"Failed to fetch price"); return BadRequest(priceResponse); }
             _logger.LogInformation($"Successfuly fetched price");
 
             _logger.LogInformation($"Updating portfolio...");
             _botService.UpdatePortfolio(hashed_key, TKR, quantity);
             _logger.LogInformation($"Successfuly updated portfolio");
+
+            _logger.LogInformation($"Logging trade...");
+            Response tradeLogResponse = _stockService.UpdateTradeLog(hashed_key, TKR, quantity);
+            if (tradeLogResponse.Status != Status.Successful) { _logger.LogInformation($"Failed to log trade"); return BadRequest(tradeLogResponse); }
+            _logger.LogInformation($"Successfuly logged trade");
 
             _logger.LogInformation($"Updating balance...");
             Response botResponse = _botService.UpdatePrice(hashed_key, -(double)priceResponse.Result * quantity);
@@ -137,7 +142,7 @@ namespace API.Controllers
             _logger.LogInformation($"Key is valid");
 
             _logger.LogInformation($"Fetching price...");
-            Response priceResponse = _stockService.GetPriceAsync(TKR).Result;
+            Response priceResponse = _stockService.GetStockPrice(hashed_key, TKR).Result;
             if (priceResponse.Status == Status.Failed) { _logger.LogInformation($"Failed to fetch price"); return BadRequest(priceResponse); }
             _logger.LogInformation($"Successfuly fetched price");
 
@@ -145,6 +150,11 @@ namespace API.Controllers
             Response portfolioResponse = _botService.UpdatePortfolio(hashed_key, TKR, -quantity);
             if (portfolioResponse.Status == Status.Failed) { _logger.LogInformation($"Failed to update portfolio"); return BadRequest(portfolioResponse); }
             _logger.LogInformation($"Successfuly updated portfolio");
+
+            _logger.LogInformation($"Logging trade...");
+            Response tradeLogResponse = _stockService.UpdateTradeLog(hashed_key, TKR, -quantity);
+            if (tradeLogResponse.Status != Status.Successful) { _logger.LogInformation($"Failed to log trade"); return BadRequest(tradeLogResponse); }
+            _logger.LogInformation($"Successfuly logged trade");
 
             _logger.LogInformation($"Updating balance...");
             Response botResponse = _botService.UpdatePrice(hashed_key, (double)priceResponse.Result * quantity);
@@ -157,10 +167,19 @@ namespace API.Controllers
         [HttpGet("price", Name = "GetPrice")]
         public IActionResult GetPrice(string TKR)
         {
-            Response priceResponse = _stockService.GetPriceAsync(TKR).Result;
+            Response priceResponse = _stockService.GetStockPrice("-1", TKR).Result;
             if (priceResponse.Status == Status.Failed) { return BadRequest(priceResponse); }
 
             return Ok(priceResponse);
+        }
+
+        [HttpGet("trades", Name = "GetTrades")]
+        public IActionResult GetTrades(string key)
+        {
+            string hashed_key = _authService.HashKey(key);
+            if (!_botService.KeyExists(hashed_key)) return Unauthorized(new Response { Result = "Could not find bot/Invalid key", Status = Status.Failed });
+
+            return Ok(_stockService.GetTrades(hashed_key));
         }
     }
 }
