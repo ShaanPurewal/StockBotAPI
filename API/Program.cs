@@ -18,6 +18,9 @@ builder.Services.AddScoped<StockService>();
 // Register your BotService
 builder.Services.AddScoped<BotService>();
 
+// Register your DiscordService
+builder.Services.AddScoped<DiscordService>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

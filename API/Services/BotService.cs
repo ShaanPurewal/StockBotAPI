@@ -110,6 +110,8 @@ namespace API.Services
             return new Response { Result = inventory + quantity, Status = Status.Successful, Message = $"Successfully updated portfolio, '{TKR}': {inventory + quantity}" };
         }
 
+        public List<Bot> GetAllBots() { return [.. _bots.Values]; }
+
         public Bot FindBot(string key) { return _bots[key]; }
 
         public bool KeyExists(string key) { return _bots.ContainsKey(key); }

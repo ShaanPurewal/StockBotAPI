@@ -1,15 +1,18 @@
 using API.Models;
 using API.Services;
 using Microsoft.AspNetCore.Mvc;
+using Discord;
+using Discord.WebSocket;
 
 namespace API.Controllers
 {
     [ApiController]
     [Route("/")]
-    public class BotController(ILogger<BotController> logger, AuthentificationService authService, BotService botService, StockService stockService) : ControllerBase
+    public class BotController(ILogger<BotController> logger, AuthentificationService authService, BotService botService, StockService stockService, DiscordService discordService) : ControllerBase
     {
 
         private readonly ILogger<BotController> _logger = logger;
+        private readonly DiscordService _discordService = discordService;
         private readonly AuthentificationService _authService = authService;
         private StockService _stockService = stockService;
         private BotService _botService = botService;
@@ -114,6 +117,11 @@ namespace API.Controllers
             if (priceResponse.Status == Status.Failed) { _logger.LogInformation($"Failed to fetch price"); return BadRequest(priceResponse); }
             _logger.LogInformation($"Successfuly fetched price");
 
+            _logger.LogInformation($"Updating balance...");
+            Response botResponse = _botService.UpdatePrice(hashed_key, -(double)priceResponse.Result * quantity);
+            if (botResponse.Status == Status.Failed) { _logger.LogInformation($"Failed to update balance"); return BadRequest(botResponse); }
+            _logger.LogInformation($"Successfuly updated balance");
+
             _logger.LogInformation($"Updating portfolio...");
             _botService.UpdatePortfolio(hashed_key, TKR, quantity);
             _logger.LogInformation($"Successfuly updated portfolio");
@@ -123,11 +131,7 @@ namespace API.Controllers
             if (tradeLogResponse.Status != Status.Successful) { _logger.LogInformation($"Failed to log trade"); return BadRequest(tradeLogResponse); }
             _logger.LogInformation($"Successfuly logged trade");
 
-            _logger.LogInformation($"Updating balance...");
-            Response botResponse = _botService.UpdatePrice(hashed_key, -(double)priceResponse.Result * quantity);
-
-            if (botResponse.Status == Status.Failed) { _logger.LogInformation($"Failed to update balance"); return BadRequest(botResponse); }
-            _logger.LogInformation($"Successfuly updated balance");
+            _discordService.TrySendTrade($"{_botService.FindBot(hashed_key).Name} bought {quantity} shares of '{TKR.ToUpper()}'");
             return Ok(botResponse);
         }
 
@@ -146,6 +150,11 @@ namespace API.Controllers
             if (priceResponse.Status == Status.Failed) { _logger.LogInformation($"Failed to fetch price"); return BadRequest(priceResponse); }
             _logger.LogInformation($"Successfuly fetched price");
 
+            _logger.LogInformation($"Updating balance...");
+            Response botResponse = _botService.UpdatePrice(hashed_key, (double)priceResponse.Result * quantity);
+            if (botResponse.Status == Status.Failed) { _logger.LogInformation($"Failed to update balance"); return BadRequest(botResponse); }
+            _logger.LogInformation($"Successfuly updated balance");
+
             _logger.LogInformation($"Updating portfolio...");
             Response portfolioResponse = _botService.UpdatePortfolio(hashed_key, TKR, -quantity);
             if (portfolioResponse.Status == Status.Failed) { _logger.LogInformation($"Failed to update portfolio"); return BadRequest(portfolioResponse); }
@@ -156,11 +165,7 @@ namespace API.Controllers
             if (tradeLogResponse.Status != Status.Successful) { _logger.LogInformation($"Failed to log trade"); return BadRequest(tradeLogResponse); }
             _logger.LogInformation($"Successfuly logged trade");
 
-            _logger.LogInformation($"Updating balance...");
-            Response botResponse = _botService.UpdatePrice(hashed_key, (double)priceResponse.Result * quantity);
-
-            if (botResponse.Status == Status.Failed) { _logger.LogInformation($"Failed to update balance"); return BadRequest(botResponse); }
-            _logger.LogInformation($"Successfuly updated balance");
+            _discordService.TrySendTrade($"{_botService.FindBot(hashed_key).Name} sold {quantity} shares of '{TKR.ToUpper()}'");
             return Ok(botResponse);
         }
 
@@ -180,6 +185,14 @@ namespace API.Controllers
             if (!_botService.KeyExists(hashed_key)) return Unauthorized(new Response { Result = "Could not find bot/Invalid key", Status = Status.Failed });
 
             return Ok(_stockService.GetTrades(hashed_key));
+        }
+
+        [HttpGet("portfolios", Name = "GetPortfolios")]
+        public IActionResult GetPortfolios()
+        {
+            List<Bot> allBots = _botService.GetAllBots();
+            _discordService.TrySendPortfolios(allBots);
+            return Ok(new Response { Result = allBots, Status = Status.Successful});
         }
     }
 }
