@@ -96,6 +96,7 @@ namespace API.Services
 
         public Response UpdatePortfolio(string key, string TKR, int quantity)
         {
+            TKR = TKR.ToUpper();
             Bot foundBot = FindBot(key);
 
             foundBot.Portfolio.TryGetValue(TKR, out double inventory);
