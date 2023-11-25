@@ -61,7 +61,7 @@ namespace API.Services
 
                 // Parse the JSON response to extract the price value
                 var json = Newtonsoft.Json.JsonConvert.DeserializeObject<PriceResponse>(body);
-
+                symbol = symbol.ToUpper();
                 if (json != null && json.Price != null)
                 {
                     priceCache[symbol] =  new PriceCache { Price = (double)json.Price };
