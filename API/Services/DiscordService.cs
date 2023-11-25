@@ -6,17 +6,29 @@ namespace API.Services
 {
     public class DiscordService
     {
+        private readonly string botToken = "";
+        ulong tradeChannelId = 0;
+        ulong portfolioChannelId = 0;
+        public DiscordService()
+        {
+            IConfigurationRoot configuration = new ConfigurationBuilder()
+            .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
+            .AddJsonFile("appsettings.json")
+            .Build();
+
+            botToken = configuration["Secret:BotToken"];
+            tradeChannelId = ulong.Parse(configuration["Secret:tradeID"]);
+            portfolioChannelId = ulong.Parse(configuration["Secret:portfolioID"]);
+        }
+
         public async void TrySendTrade(string message)
         {
             try
             {
-                const string botToken = @"MTE3Nzc5NTk4NjYyMjUyOTU5Ng.GEbGYT.nPXp5IbeVBfTvqXW8oHHa-OSe8uG9nHj58i9vk";
-                ulong channelId = 1177795306444832819;
-
                 var client = new DiscordSocketClient();
                 await client.LoginAsync(TokenType.Bot, botToken);
                 await client.StartAsync();
-                var channel = await client.GetChannelAsync(channelId) as IMessageChannel;
+                var channel = await client.GetChannelAsync(tradeChannelId) as IMessageChannel;
                 await channel!.SendMessageAsync(message);
             } catch (Exception e)
             {
@@ -32,13 +44,10 @@ namespace API.Services
             {
                 try
                 {
-                    const string botToken = @"MTE3Nzc5NTk4NjYyMjUyOTU5Ng.GEbGYT.nPXp5IbeVBfTvqXW8oHHa-OSe8uG9nHj58i9vk";
-                    ulong channelId = 1177809579329990716;
-
                     var client = new DiscordSocketClient();
                     await client.LoginAsync(TokenType.Bot, botToken);
                     await client.StartAsync();
-                    var channel = await client.GetChannelAsync(channelId) as IMessageChannel;
+                    var channel = await client.GetChannelAsync(portfolioChannelId) as IMessageChannel;
 
                     string message = $"**{bot.Name}**" +
                                     $"  \nbalance: ${bot.Balance}\n";

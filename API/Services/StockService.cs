@@ -6,7 +6,7 @@ namespace API.Services
 {
     public class StockService
     {
-        private readonly string apiKey = "f2bd01f862msh320829679aaf513p1eb59cjsn27c827d6427e";
+        private readonly string apiKey = "";
 
         private readonly double requestThreshold = 60 * 5;
         private static Dictionary<string, DateTime> lastRequest = [];
@@ -21,6 +21,14 @@ namespace API.Services
 
         public StockService()
         {
+
+            IConfigurationRoot configuration = new ConfigurationBuilder()
+            .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
+            .AddJsonFile("appsettings.json")
+            .Build();
+
+            apiKey = configuration["Secret:StockApiKey"];
+
             if (!Directory.Exists(tradeDirectory)) { Directory.CreateDirectory(tradeDirectory); }
             LoadTrades();
         }
